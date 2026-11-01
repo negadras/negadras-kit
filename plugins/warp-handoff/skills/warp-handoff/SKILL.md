@@ -1,6 +1,6 @@
 ---
 name: warp-handoff
-description: Start a separate Claude Code session for a task, either unattended with a fixed tool allowlist (launch) or driven by the user in a new Warp tab (handoff), then wait for it and read its result. Use when the user asks to run something in a fresh or parallel Claude session, to test a setting or hook in a clean session, or to hand a task to a session they will supervise in Warp.
+description: Start another Claude Code session in a new Warp tab (optionally split side by side with a shell), or unattended in the background with a fixed tool list, then wait for it and, for a background session, read its result. Use when the user asks for a new tab, a split pane, a parallel or background Claude session, or a clean session to test a setting or hook.
 license: MIT
 ---
 
@@ -13,7 +13,8 @@ Run every command as `${CLAUDE_SKILL_DIR}/scripts/warp-handoff.sh <command> ...`
 - **launch**: the task can run unattended. Give it the smallest tool list that does the job (`-t`, default
   `Read,Grep,Glob`). Anything outside the list is refused automatically; nobody is asked.
 - **handoff**: the user wants to watch, steer or approve. It opens a Warp tab attached to the session, and the user
-  answers its permission prompts there.
+  answers its permission prompts there. Warp cannot split the tab the user is in: for "a split pane", use
+  `handoff --split`, which opens a new tab with the session and a shell side by side, and say so.
 
 Prefer `launch` with read-only tools. Add write tools (`Edit`, `Write`, `Bash(...)`) only when the task needs them
 and the user agreed. Narrow `Bash` to patterns such as `Bash(npm test:*)`.
