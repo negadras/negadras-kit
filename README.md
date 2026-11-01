@@ -29,7 +29,8 @@ requirements.
 plugins/<name>/                   one installable plugin: skills, hooks, agents, commands, MCP config
 configs/<topic>/                  copy-in files that are not plugins (settings snippets, statusline, tab configs)
 docs/                             guides for working on this repo
-scripts/validate.sh               checks manifests, shell scripts and every plugin's offline tests
+scripts/validate.sh               checks manifests, versions, shell scripts and every plugin's offline tests
+scripts/release.sh                tags and publishes new plugin versions; run by the release workflow on main
 ```
 
 Conventions are in [AGENTS.md](AGENTS.md); adding something new is in [docs/adding-a-plugin.md](docs/adding-a-plugin.md).

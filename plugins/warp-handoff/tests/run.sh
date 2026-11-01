@@ -46,6 +46,8 @@ echo "# feature gate"
 setup gate
 ch doctor
 expect "doctor passes with a capable claude" rc_is 0
+ch --version
+expect "--version matches plugin.json" test "$OUT" = "$(jq -r .version "$ROOT/.claude-plugin/plugin.json")"
 export STUB_OLD=1
 ch doctor
 expect "doctor fails when claude lacks required flags" test "$RC" -ne 0
