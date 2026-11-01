@@ -65,12 +65,13 @@ folder, opens it with `warp://tab_config/...` without bringing Warp to the front
 
 ## Configuration
 
-`~/.config/warp-handoff/config` holds `KEY=value` lines. It is parsed, never executed.
+`~/.config/warp-handoff/config` holds `KEY=value` lines. It is parsed, never executed: spaces around `=` and
+quotes around the value are fine, and `~` is expanded but `$VARIABLES` are not.
 
 | Key | Default | Meaning |
 |---|---|---|
 | `TRUSTED_DIRS` | empty | Colon-separated. Sessions under these load project settings and hooks; elsewhere only your user settings load. |
-| `PROTECTED_DIRS` | empty | No write tools and no `handoff` under these. |
+| `PROTECTED_DIRS` | empty | Colon-separated. Under these, `launch` allows only `Read`, `Grep`, `Glob`, `WebSearch` and `WebFetch`, and `handoff` is refused. An entry that is not an existing absolute folder is an error, not skipped. |
 | `BUDGET_USD` | `1.00` | Per-session cap. `--budget` can only lower it. |
 | `MAX_SESSIONS` | `3` | Running sessions started by this script. |
 | `TIMEOUT_SECS` | `1800` | A `launch` session is stopped after this. `--timeout` can only lower it. |
@@ -92,8 +93,8 @@ Environment overrides: `WARP_HANDOFF_CONFIG`, `WARP_HANDOFF_STATE`, `WARP_HANDOF
   trusted, but trust is inherited: trusting your home folder trusts every clone under it.
 - **MCP tools you did not choose.** Sessions get no MCP servers unless `MCP_CONFIG` names some.
 - **Runaway cost.** Budget, session count and timeout; flags can only lower them.
-- **Instructions smuggled in a result.** `result` caps the text and wraps it in data markers, and the skill tells the
-  agent not to act on it.
+- **Instructions smuggled in a result.** `result` caps the text and wraps it in data markers with a random tag the
+  session cannot guess, so it cannot fake the end of the data. The skill tells the agent not to act on it.
 
 ## What it does not protect against
 
