@@ -299,6 +299,20 @@ printf 'PROTECTED_DIRS="%s/proj" # mine\n' "$T" >"$T/config"
 ch launch -t "Read,Edit" "x"
 expect "a quoted folder with a comment is still protected" rc_is 2
 expect "and the comment is not part of it" err_lacks "not an existing absolute folder"
+mkdir -p "$T/proj # inside"
+printf 'PROTECTED_DIRS="%s/proj # inside" # mine\n' "$T" >"$T/config"
+ch launch -d "$T/proj # inside" -t "Read,Edit" "x"
+expect "a # inside quotes is part of the folder" rc_is 2
+expect "and only the trailing comment is dropped" err_lacks "not an existing absolute folder"
+printf 'PROTECTED_DIRS="%s/proj"#1\n' "$T" >"$T/config"
+ch launch -d "$T/proj#1" -t "Read,Edit" "x"
+expect "a # right after a closing quote is refused" rc_is 2
+expect "as a bad entry, not read as a comment" err_has "not an existing absolute folder"
+printf 'PROTECTED_DIRS=#%s/proj\n' "$T" >"$T/config"
+ch launch -t "Read,Edit" "x"
+expect "a value starting with # is refused, not emptied" rc_is 2
+expect "as a bad entry" err_has "not an existing absolute folder"
+expect "none of these reached claude" test -z "$(grep -F '[-p]' "$T/argv.log" | grep -F 'Edit')"
 
 echo "# doctor checks folder lists"
 setup doctor-dirs

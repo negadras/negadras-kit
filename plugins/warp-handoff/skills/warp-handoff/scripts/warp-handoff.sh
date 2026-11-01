@@ -54,21 +54,21 @@ tomlq() { local s=$1; s=${s//\\/\\\\}; s=${s//\"/\\\"}; printf '"%s"' "$s"; }
 shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 new_id() { od -An -N4 -tx1 /dev/urandom | tr -d ' \n'; }
 
-# A " #" outside quotes starts a comment; a # with no space before it is part of the value, as in a folder name.
+# A # starts a comment only after whitespace. Anything else is returned whole, so a folder entry fails closed.
 config_value() {
-  local v q inner after
+  local v q inner rest
   v=$(trim "$1")
   case "$v" in
     \"* | \'*)
       q=${v:0:1}
       inner=${v:1}
       case "$inner" in *"$q"*) ;; *) printf '%s' "$v"; return 0 ;; esac
-      after=$(trim "${inner#*"$q"}")
+      rest=${inner#*"$q"}
       inner=${inner%%"$q"*}
-      case "$after" in '' | '#'*) printf '%s' "$inner" ;; *) printf '%s' "$v" ;; esac
+      case "$rest" in '' | [[:space:]]*) ;; *) printf '%s' "$v"; return 0 ;; esac
+      case "$(trim "$rest")" in '' | '#'*) printf '%s' "$inner" ;; *) printf '%s' "$v" ;; esac
       ;;
     *)
-      v=" $v"
       trim "${v%%[[:space:]]#*}"
       ;;
   esac

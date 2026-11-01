@@ -66,8 +66,9 @@ folder, opens it with `warp://tab_config/...` without bringing Warp to the front
 ## Configuration
 
 `~/.config/warp-handoff/config` holds `KEY=value` lines. It is parsed, never executed: spaces around `=` and
-quotes around the value are fine, ` #` starts a comment (a `#` with no space before it is part of the value), and
-`~` is expanded but `$VARIABLES` are not. `doctor` checks both folder lists.
+quotes around the value are fine, and a `#` after whitespace starts a comment. A `#` anywhere else (at the start
+of a value, inside a folder name, right after a closing quote) is part of the value, so a mistyped folder entry is an
+error rather than a different folder. `~` is expanded but `$VARIABLES` are not. `doctor` checks both folder lists.
 
 | Key | Default | Meaning |
 |---|---|---|

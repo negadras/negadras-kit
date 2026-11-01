@@ -1,6 +1,6 @@
 ---
 name: warp-handoff
-description: Start another Claude Code session in a new Warp tab (optionally split side by side with a shell), or unattended in the background with a fixed tool list, then wait for it and read its result. Use when the user asks for a new tab, a split pane, a parallel or background Claude session, or a clean session to test a setting or hook.
+description: Start another Claude Code session in a new Warp tab (optionally split side by side with a shell), or unattended in the background with a fixed tool list, then wait for it and, for a background session, read its result. Use when the user asks for a new tab, a split pane, a parallel or background Claude session, or a clean session to test a setting or hook.
 license: MIT
 ---
 
