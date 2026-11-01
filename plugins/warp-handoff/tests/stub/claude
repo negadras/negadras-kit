@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Fake claude CLI for the offline tests: logs argv, answers the few calls the script makes.
+log=${STUB_LOG:-/dev/null}
+{ printf 'ARGV'; printf ' [%s]' "$@"; printf '\n'; } >>"$log"
+
+case "${1:-}" in
+  --help)
+    if [ -n "${STUB_OLD:-}" ]; then
+      echo "Usage: claude [options] [prompt]"
+      echo "  -p, --print   Print response and exit"
+    else
+      cat <<'EOF'
+Usage: claude [options] [command] [prompt]
+  --allowedTools, --allowed-tools <tools...>
+  --bg, --background
+  --disallowedTools, --disallowed-tools <tools...>
+  --max-budget-usd <amount>
+  --mcp-config <configs...>
+  --output-format <format>
+  --permission-mode <mode>  (choices: "acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan")
+  --permission-prompts <target>
+  --setting-sources <sources>
+  --strict-mcp-config
+  --tools <tools...>
+Commands:
+  agents [options]                      Manage background agents
+EOF
+    fi
+    exit 0 ;;
+  --version) echo "9.9.9 (stub)"; exit 0 ;;
+  agents)
+    if [ -n "${STUB_AGENTS:-}" ] && [ -f "$STUB_AGENTS" ]; then cat "$STUB_AGENTS"; else echo '[]'; fi
+    exit 0 ;;
+  stop) echo "stopped $2"; exit 0 ;;
+  rm) echo "removed $2"; exit 0 ;;
+esac
+
+for a in "$@"; do
+  case "$a" in
+    -p)
+      if [ -n "${STUB_STDIN_LOG:-}" ]; then cat >"$STUB_STDIN_LOG"; else cat >/dev/null; fi
+      sleep "${STUB_SLEEP:-0}"
+      if [ -n "${STUB_RESULT:-}" ]; then
+        cat "$STUB_RESULT"
+      else
+        echo '{"type":"system","subtype":"init"}'
+        echo '{"type":"result","subtype":"success","is_error":false,"result":"stub result","total_cost_usd":0.01,"num_turns":1,"permission_denials":[]}'
+      fi
+      exit 0 ;;
+    --bg)
+      echo "backgrounded · deadbeef"
+      echo "  claude attach deadbeef    open in this terminal"
+      exit 0 ;;
+  esac
+done
+exit 0

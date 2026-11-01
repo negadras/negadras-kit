@@ -1,0 +1,13 @@
+{
+  "name": "warp-handoff",
+  "description": "Start and supervise separate Claude Code sessions with guardrails the calling agent cannot loosen; watch them in Warp tabs.",
+  "version": "0.1.0",
+  "author": {
+    "name": "negadras",
+    "url": "https://github.com/negadras"
+  },
+  "homepage": "https://github.com/negadras/negadras-kit/tree/main/plugins/warp-handoff",
+  "repository": "https://github.com/negadras/negadras-kit",
+  "license": "MIT",
+  "keywords": ["warp", "background-sessions", "permissions", "orchestration"]
+}

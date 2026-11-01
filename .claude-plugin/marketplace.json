@@ -1,0 +1,15 @@
+{
+  "name": "negadras-kit",
+  "description": "Skills, plugins and configs for working with coding agents.",
+  "owner": {
+    "name": "negadras",
+    "url": "https://github.com/negadras"
+  },
+  "plugins": [
+    {
+      "name": "warp-handoff",
+      "description": "Start and supervise separate Claude Code sessions with guardrails the calling agent cannot loosen; watch them in Warp tabs.",
+      "source": "./plugins/warp-handoff"
+    }
+  ]
+}
