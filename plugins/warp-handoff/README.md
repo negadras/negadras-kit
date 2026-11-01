@@ -66,12 +66,13 @@ folder, opens it with `warp://tab_config/...` without bringing Warp to the front
 ## Configuration
 
 `~/.config/warp-handoff/config` holds `KEY=value` lines. It is parsed, never executed: spaces around `=` and
-quotes around the value are fine, and `~` is expanded but `$VARIABLES` are not.
+quotes around the value are fine, ` #` starts a comment (a `#` with no space before it is part of the value), and
+`~` is expanded but `$VARIABLES` are not. `doctor` checks both folder lists.
 
 | Key | Default | Meaning |
 |---|---|---|
 | `TRUSTED_DIRS` | empty | Colon-separated. Sessions under these load project settings and hooks; elsewhere only your user settings load. |
-| `PROTECTED_DIRS` | empty | Colon-separated. Under these, `launch` allows only `Read`, `Grep`, `Glob`, `WebSearch` and `WebFetch`, and `handoff` is refused. An entry that is not an existing absolute folder is an error, not skipped. |
+| `PROTECTED_DIRS` | empty | Colon-separated. Under these, `launch` allows only `Read`, `Grep` and `Glob`, and `handoff` is refused. `WebFetch` and `WebSearch` are refused too, because they can send out what `Read` saw. An entry that is not an existing absolute folder is an error, not skipped. |
 | `BUDGET_USD` | `1.00` | Per-session cap. `--budget` can only lower it. |
 | `MAX_SESSIONS` | `3` | Running sessions started by this script. |
 | `TIMEOUT_SECS` | `1800` | A `launch` session is stopped after this. `--timeout` can only lower it. |

@@ -2,7 +2,7 @@
 # warp-handoff: start and supervise separate Claude Code sessions with guardrails the caller cannot loosen.
 set -euo pipefail
 
-VERSION=0.1.1
+VERSION=0.1.2
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/$(basename "${BASH_SOURCE[0]}")"
 STATE_DIR=${WARP_HANDOFF_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/warp-handoff}
 CONFIG_FILE=${WARP_HANDOFF_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/warp-handoff/config}
@@ -54,6 +54,26 @@ tomlq() { local s=$1; s=${s//\\/\\\\}; s=${s//\"/\\\"}; printf '"%s"' "$s"; }
 shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 new_id() { od -An -N4 -tx1 /dev/urandom | tr -d ' \n'; }
 
+# A " #" outside quotes starts a comment; a # with no space before it is part of the value, as in a folder name.
+config_value() {
+  local v q inner after
+  v=$(trim "$1")
+  case "$v" in
+    \"* | \'*)
+      q=${v:0:1}
+      inner=${v:1}
+      case "$inner" in *"$q"*) ;; *) printf '%s' "$v"; return 0 ;; esac
+      after=$(trim "${inner#*"$q"}")
+      inner=${inner%%"$q"*}
+      case "$after" in '' | '#'*) printf '%s' "$inner" ;; *) printf '%s' "$v" ;; esac
+      ;;
+    *)
+      v=" $v"
+      trim "${v%%[[:space:]]#*}"
+      ;;
+  esac
+}
+
 load_config() {
   if [ -f "$CONFIG_FILE" ]; then
     local line key val
@@ -61,8 +81,7 @@ load_config() {
       line=$(trim "$line")
       case "$line" in '' | '#'*) continue ;; *=*) ;; *) note "config: ignoring a line without '='"; continue ;; esac
       key=$(trim "${line%%=*}")
-      val=$(trim "${line#*=}")
-      case "$val" in \"*\" | \'*\') val=${val:1:${#val}-2} ;; esac
+      val=$(config_value "${line#*=}")
       case "$key" in
         TRUSTED_DIRS) CFG_TRUSTED_DIRS=$val ;;
         PROTECTED_DIRS) CFG_PROTECTED_DIRS=$val ;;
@@ -98,6 +117,14 @@ resolve_dir() {
   printf '%s' "$d"
 }
 
+entry_dir() {
+  local real
+  real=$(expand_home "$1")
+  case "$real" in /*) ;; *) return 1 ;; esac
+  [ -d "$real" ] || return 1
+  printf '%s' "$real"
+}
+
 # With KEY, an entry that is not an existing absolute folder is fatal, so a typo cannot turn protection off.
 under_any() {
   local dir=$1 key=${3:-} entry real a
@@ -105,9 +132,7 @@ under_any() {
   IFS=: read -r -a entries <<<"$2"
   for entry in ${entries[@]+"${entries[@]}"}; do
     [ -n "$entry" ] || continue
-    real=$(expand_home "$entry")
-    case "$real" in /*) ;; *) real="" ;; esac
-    if [ -z "$real" ] || [ ! -d "$real" ]; then
+    if ! real=$(entry_dir "$entry"); then
       [ -z "$key" ] || die "config: $key entry $entry is not an existing absolute folder (~ is expanded, \$HOME is not); refusing to run"
       continue
     fi
@@ -138,18 +163,18 @@ normalize_list() {
 
 TOOL_LIST=""
 TOOL_BASES=""
-TOOL_WRITES=0
+TOOL_BEYOND_LOCAL_READ=0
 parse_tools() {
   local t base
   local -a items
   TOOL_LIST=$(normalize_list "$1")
   [ -n "$TOOL_LIST" ] || die "at least one tool is required"
   TOOL_BASES=""
-  TOOL_WRITES=0
+  TOOL_BEYOND_LOCAL_READ=0
   IFS=, read -r -a items <<<"$TOOL_LIST"
   for t in "${items[@]}"; do
     base=${t%%\(*}
-    case "$base" in Read | Grep | Glob | WebSearch | WebFetch) ;; *) TOOL_WRITES=1 ;; esac
+    case "$base" in Read | Grep | Glob) ;; *) TOOL_BEYOND_LOCAL_READ=1 ;; esac
     case "$base" in mcp__*) continue ;; esac
     case ",$TOOL_BASES," in *",$base,"*) ;; *) TOOL_BASES="${TOOL_BASES:+$TOOL_BASES,}$base" ;; esac
   done
@@ -312,8 +337,8 @@ cmd_launch() {
   fi
   dir=$(resolve_dir "$dir")
   parse_tools "$tools"
-  if [ "$TOOL_WRITES" = 1 ] && under_any "$dir" "$CFG_PROTECTED_DIRS" PROTECTED_DIRS; then
-    die "$dir is under PROTECTED_DIRS; only Read, Grep, Glob, WebSearch and WebFetch are allowed there"
+  if [ "$TOOL_BEYOND_LOCAL_READ" = 1 ] && under_any "$dir" "$CFG_PROTECTED_DIRS" PROTECTED_DIRS; then
+    die "$dir is under PROTECTED_DIRS; only Read, Grep and Glob are allowed there"
   fi
   check_capacity
 
@@ -516,6 +541,20 @@ cmd_follow() {
       else empty end'
 }
 
+# A bad PROTECTED_DIRS entry stops handoff and write launches, so it fails doctor; a bad TRUSTED_DIRS entry is skipped.
+doctor_dirs() {
+  local label=$1 list=$2 verdict=$3 entry n=0 bad=""
+  local -a entries
+  IFS=: read -r -a entries <<<"$list"
+  for entry in ${entries[@]+"${entries[@]}"}; do
+    [ -n "$entry" ] || continue
+    if entry_dir "$entry" >/dev/null; then n=$((n + 1)); else bad="$bad $entry"; fi
+  done
+  if [ -z "$bad" ]; then printf '%-10s%s folder(s)\n' "$label" "$n"; return 0; fi
+  printf '%-10s%s, not an existing absolute folder:%s\n' "$label" "$verdict" "$bad"
+  [ "$verdict" = ignored ]
+}
+
 cmd_doctor() {
   local bad=0 missing tabdir opener version
   printf 'warp-handoff %s\n' "$VERSION"
@@ -539,6 +578,8 @@ cmd_doctor() {
   opener=$(warp_opener 2>/dev/null || true)
   printf 'opener    %s\n' "${opener:-none}"
   if [ -f "$CONFIG_FILE" ]; then printf 'config    %s\n' "$CONFIG_FILE"; else printf 'config    %s (not found, defaults)\n' "$CONFIG_FILE"; fi
+  doctor_dirs trusted "$CFG_TRUSTED_DIRS" ignored
+  doctor_dirs protected "$CFG_PROTECTED_DIRS" ERROR || bad=1
   printf 'state     %s\n' "$STATE_DIR"
   printf 'limits    $%s per session · %s sessions · %ss\n' "$CFG_BUDGET_USD" "$CFG_MAX_SESSIONS" "$CFG_TIMEOUT_SECS"
   return "$bad"

@@ -35,6 +35,7 @@ expect() { local name=$1; shift; if "$@"; then ok "$name"; else bad "$name"; fi;
 rc_is() { [ "$RC" = "$1" ]; }
 out_has() { case "$OUT" in *"$1"*) return 0 ;; esac; return 1; }
 err_has() { case "$ERR" in *"$1"*) return 0 ;; esac; return 1; }
+err_lacks() { ! err_has "$@"; }
 line_has() { case "$1" in *"$2"*) return 0 ;; esac; return 1; }
 line_lacks() { ! line_has "$@"; }
 is_id() { local re='^[0-9a-f]{8}$'; [[ $1 =~ $re ]]; }
@@ -139,8 +140,12 @@ if [ -d "$UPPER" ]; then
 else
   echo "skip a different letter case is still protected (case-sensitive file system)"
 fi
-launch_and_wait -t "Read,Grep,Glob,WebSearch,WebFetch" "x"
-expect "read-only tools allowed" rc_is 0
+ch launch -t "Read,WebFetch" "x"
+expect "WebFetch refused: it can send out what Read saw" rc_is 2
+ch launch -t "Read,WebSearch" "x"
+expect "WebSearch refused" rc_is 2
+launch_and_wait -t "Read,Grep,Glob" "x"
+expect "Read, Grep and Glob allowed" rc_is 0
 
 echo "# protected dirs: config forms"
 setup protected-forms
@@ -158,6 +163,9 @@ refused_with "the root folder" "PROTECTED_DIRS=/"
 refused_with "an unexpanded \$HOME" 'PROTECTED_DIRS=$HOME/proj'
 expect "the bad entry is named" err_has 'PROTECTED_DIRS entry $HOME/proj'
 expect "none of them reached claude" test -z "$(launch_line)"
+printf 'PROTECTED_DIRS=%s/proj # mine\n' "$T" >"$T/config"
+ch launch -t "Read,Edit" "x"
+expect "a trailing comment is not read as part of the folder" err_lacks "not an existing absolute folder"
 
 echo "# session limit and stop"
 setup limit
@@ -279,6 +287,32 @@ expect "config values never executed" test ! -e "$T/pwned"
 printf 'NOPE=1\n' >"$T/config"
 launch_and_wait "x"
 expect "unknown keys ignored" rc_is 0
+
+echo "# config comments"
+setup comments
+mkdir -p "$T/proj#1"
+printf '# whole line\nBUDGET_USD=0.50 # cheap\nTRUSTED_DIRS=%s/proj#1   # mine\n' "$T" >"$T/config"
+launch_and_wait -d "$T/proj#1" "x"
+expect "a comment after a number is ignored" line_has "$(launch_line)" "[--max-budget-usd] [0.50]"
+expect "a # inside a value is kept" line_lacks "$(launch_line)" "[--setting-sources]"
+printf 'PROTECTED_DIRS="%s/proj" # mine\n' "$T" >"$T/config"
+ch launch -t "Read,Edit" "x"
+expect "a quoted folder with a comment is still protected" rc_is 2
+expect "and the comment is not part of it" err_lacks "not an existing absolute folder"
+
+echo "# doctor checks folder lists"
+setup doctor-dirs
+printf 'PROTECTED_DIRS=%s/missing\n' "$T" >"$T/config"
+ch doctor
+expect "a bad PROTECTED_DIRS entry fails doctor" test "$RC" -ne 0
+expect "and is named" out_has "$T/missing"
+printf 'TRUSTED_DIRS=%s/missing\n' "$T" >"$T/config"
+ch doctor
+expect "a bad TRUSTED_DIRS entry does not fail doctor" rc_is 0
+expect "but is reported as ignored" out_has "ignored"
+printf 'PROTECTED_DIRS=%s/proj\nTRUSTED_DIRS=%s\n' "$T" "$T" >"$T/config"
+ch doctor
+expect "good folder lists pass doctor" rc_is 0
 
 echo "# ids"
 setup ids
