@@ -35,5 +35,6 @@ Rules for people and agents changing this repo.
 
 ## Before committing
 
-Run `scripts/validate.sh` and keep it green. For a release, bump the plugin's `version`, add a CHANGELOG entry and
-tag `<plugin>-v<version>`.
+Run `scripts/validate.sh` and keep it green. Merging to `main` is the release: any change to a plugin's files other
+than `tests/`, `README.md` and `CHANGELOG.md` needs a new `version` and a CHANGELOG entry in the same PR. The
+release workflow then tags `<plugin>--v<version>`; never tag by hand. See [docs/releasing.md](docs/releasing.md).
